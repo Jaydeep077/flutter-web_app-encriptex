@@ -34742,7 +34742,7 @@ $0(){var s=this.a
 s.f=s.a9t(s.d,s.e)},
 $S:0}
 A.F9.prototype={
-J(a){var s=null,r=A.b(["1. Caesar Cipher","2. Columnar Transposition Cipher","3. Rail Fence Cipher","4. RSA","Task E","Task F","Task G","Task H","Task I","Task J"],t.s),q=A.tk(B.Al,B.j,B.PH)
+J(a){var s=null,r=A.b(["1. Caesar Cipher","2. Columnar Transposition Cipher","3. Rail Fence Cipher","4. RSA","5. Vigenere Cipher","Task F","Task G","Task H","Task I","Task J"],t.s),q=A.tk(B.Al,B.j,B.PH)
 return A.x2(q,new A.F4(B.zB,new A.a53(new A.XB(r),10,!0,!0,!0,s),s,B.aw,!1,s,s,B.k8,!1,s,10,B.ae,B.w3,s,B.a0,B.af,s))}}
 A.XB.prototype={
 $2(a,b){var s=null,r=A.auw(s,s,B.H6,s,s,s,5,s,s,B.j,s,B.La,B.Cy,s,new A.cy(A.agI(20),B.n),s,s,s,s)
