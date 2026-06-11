@@ -7,6 +7,31 @@
   const a_CODE = 97;
   const z_CODE = 122;
 
+  const ALGORITHMS = {
+    vigenere: {
+      title: '5. Vigenere Cipher',
+      keyLabel: 'Keyword',
+      keyPlaceholder: 'Keyword',
+      defaultMessage: 'Attack at dawn',
+      defaultKey: 'LEMON',
+      description: 'Encrypt or decrypt letters with a repeating keyword while preserving spaces and punctuation.',
+      transform(message, key, direction) {
+        return transformVigenere(message, key, direction);
+      },
+    },
+    railFence: {
+      title: '6. Rail Fence Cipher',
+      keyLabel: 'Rails',
+      keyPlaceholder: 'Number of rails',
+      defaultMessage: 'WEAREDISCOVEREDFLEEATONCE',
+      defaultKey: '3',
+      description: 'New cryptography algorithm: zig-zag text across multiple rails, then read row by row for a classic transposition cipher.',
+      transform(message, key, direction) {
+        return direction === 1 ? encryptRailFence(message, key) : decryptRailFence(message, key);
+      },
+    },
+  };
+
   function keyShifts(key) {
     return key
       .split('')
@@ -40,6 +65,98 @@
         keyIndex += 1;
 
         return String.fromCharCode(base + ((normalized + shift + ALPHABET_SIZE) % ALPHABET_SIZE));
+      })
+      .join('');
+  }
+
+  function parseRails(key, messageLength) {
+    const rails = Number.parseInt(key, 10);
+
+    if (!Number.isInteger(rails) || rails < 2) {
+      return { error: 'Please enter a rail count of 2 or more.' };
+    }
+
+    if (messageLength <= 1 || rails >= messageLength) {
+      return { rails: Math.max(2, Math.min(rails, Math.max(messageLength, 2))), unchanged: true };
+    }
+
+    return { rails };
+  }
+
+  function createRailPattern(length, rails) {
+    const pattern = [];
+    let rail = 0;
+    let direction = 1;
+
+    for (let index = 0; index < length; index += 1) {
+      pattern.push(rail);
+
+      if (rail === 0) {
+        direction = 1;
+      } else if (rail === rails - 1) {
+        direction = -1;
+      }
+
+      rail += direction;
+    }
+
+    return pattern;
+  }
+
+  function encryptRailFence(message, key) {
+    const parsed = parseRails(key, message.length);
+
+    if (parsed.error) {
+      return parsed.error;
+    }
+
+    if (parsed.unchanged) {
+      return message;
+    }
+
+    const rows = Array.from({ length: parsed.rails }, () => []);
+    const pattern = createRailPattern(message.length, parsed.rails);
+
+    message.split('').forEach((character, index) => {
+      rows[pattern[index]].push(character);
+    });
+
+    return rows.map((row) => row.join('')).join('');
+  }
+
+  function decryptRailFence(message, key) {
+    const parsed = parseRails(key, message.length);
+
+    if (parsed.error) {
+      return parsed.error;
+    }
+
+    if (parsed.unchanged) {
+      return message;
+    }
+
+    const pattern = createRailPattern(message.length, parsed.rails);
+    const railLengths = Array.from({ length: parsed.rails }, () => 0);
+
+    pattern.forEach((rail) => {
+      railLengths[rail] += 1;
+    });
+
+    const rails = [];
+    let cursor = 0;
+
+    railLengths.forEach((length) => {
+      rails.push(message.slice(cursor, cursor + length).split(''));
+      cursor += length;
+    });
+
+    const railPositions = Array.from({ length: parsed.rails }, () => 0);
+
+    return pattern
+      .map((rail) => {
+        const position = railPositions[rail];
+        railPositions[rail] += 1;
+        return rails[rail][position];
       })
       .join('');
   }
@@ -99,6 +216,7 @@
       }
 
       .extra-crypto input,
+      .extra-crypto select,
       .extra-crypto textarea {
         width: 100%;
         box-sizing: border-box;
@@ -111,12 +229,17 @@
         outline: none;
       }
 
+      .extra-crypto select option {
+        color: #09111f;
+      }
+
       .extra-crypto textarea {
         min-height: 72px;
         resize: vertical;
       }
 
       .extra-crypto input:focus,
+      .extra-crypto select:focus,
       .extra-crypto textarea:focus {
         border-color: #79b8ff;
         box-shadow: 0 0 0 3px rgba(121, 184, 255, 0.2);
@@ -158,22 +281,27 @@
     const panel = document.createElement('section');
     panel.id = 'extra-crypto-panel';
     panel.className = 'extra-crypto';
-    panel.setAttribute('aria-label', 'Vigenere cipher tool');
+    panel.setAttribute('aria-label', 'Additional cryptography algorithm tool');
 
     const title = document.createElement('h2');
-    title.textContent = '5. Vigenere Cipher';
 
     const description = document.createElement('p');
-    description.textContent = 'New cryptography algorithm: encrypt or decrypt letters with a repeating keyword while preserving spaces and punctuation.';
+
+    const algorithm = document.createElement('select');
+    Object.entries(ALGORITHMS).forEach(([value, config]) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = config.title;
+      algorithm.append(option);
+    });
+    algorithm.value = 'railFence';
 
     const message = document.createElement('textarea');
     message.placeholder = 'Enter message';
-    message.value = 'Attack at dawn';
 
+    const keyLabel = document.createElement('span');
     const key = document.createElement('input');
     key.type = 'text';
-    key.placeholder = 'Keyword';
-    key.value = 'LEMON';
 
     const encrypt = document.createElement('button');
     encrypt.type = 'button';
@@ -189,27 +317,54 @@
 
     const result = document.createElement('output');
     result.className = 'extra-crypto__result';
-    result.textContent = transformVigenere(message.value, key.value, 1);
+
+    const keyField = document.createElement('label');
+    keyField.className = 'extra-crypto__field';
+    keyField.append(keyLabel, key);
+
+    function selectedAlgorithm() {
+      return ALGORITHMS[algorithm.value];
+    }
+
+    function transform(direction) {
+      const config = selectedAlgorithm();
+      result.textContent = config.transform(message.value, key.value, direction);
+    }
+
+    function updateAlgorithmDefaults() {
+      const config = selectedAlgorithm();
+      title.textContent = config.title;
+      description.textContent = config.description;
+      message.value = config.defaultMessage;
+      keyLabel.textContent = config.keyLabel;
+      key.placeholder = config.keyPlaceholder;
+      key.value = config.defaultKey;
+      transform(1);
+    }
+
+    algorithm.addEventListener('change', updateAlgorithmDefaults);
 
     encrypt.addEventListener('click', () => {
-      result.textContent = transformVigenere(message.value, key.value, 1);
+      transform(1);
     });
 
     decrypt.addEventListener('click', () => {
-      result.textContent = transformVigenere(message.value, key.value, -1);
+      transform(-1);
     });
 
     panel.append(
       title,
       description,
+      createField('Algorithm', algorithm),
       createField('Message', message),
-      createField('Key', key),
+      keyField,
       actions,
       result
     );
 
     document.head.append(style);
     document.body.append(panel);
+    updateAlgorithmDefaults();
   }
 
   if (document.readyState === 'loading') {
